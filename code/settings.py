@@ -4,7 +4,7 @@ WINDOW_WIDTH = 1280
 WINDOW_HEIGHT = 720
 ANIMATION_SPEED = 8
 
-# editor graphics
+# editor graphics / number is index / objects in collection
 EDITOR_DATA = {
     0: {'style': 'player', 'type': 'object', 'menu': None, 'menu_surf': None, 'preview': None,
         'graphics': '../graphics/player/idle_right'},

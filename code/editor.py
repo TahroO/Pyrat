@@ -4,6 +4,8 @@ from pygame.mouse import get_pressed as mouse_buttons
 from pygame.mouse import get_pos as mouse_position
 from settings import *
 
+from menu import Menu
+
 
 class Editor:
     def __init__(self):
@@ -15,20 +17,30 @@ class Editor:
         self.origin = vector()
         self.pan_active = False
         self.pan_offset = vector()
+
         # support lines - draw lines on a new surface to be able to change transparency
         self.support_line_surface = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT))
         # remove the green color of the support surface
         self.support_line_surface.set_colorkey('green')
         # change transparency of support surface
         self.support_line_surface.set_alpha(30)
-        # input
 
+        # selection of tiles for editor out of collection in settings
+        # starting from 2 because 1 is player
+        self.selection_index = 2
+
+        # create instance of the menu
+        self.menu = Menu()
+
+    # input
     def event_loop(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
             self.pan_input(event)
+            # call selection index key behavior
+            self.selection_hotkeys(event)
 
     def pan_input(self, event):
         # middle mouse button was pressed or released
@@ -58,9 +70,23 @@ class Editor:
             # convert self.origin as vector to access x and y position
             self.origin = vector(mouse_position()) - self.pan_offset
 
-    # drawing
+    def selection_hotkeys(self, event):
+        # check if button was pressed
+        if event.type == pygame.KEYDOWN:
+            # if right was pressed increase index to next tile
+            if event.key == pygame.K_RIGHT:
+                self.selection_index += 1
+            # if left was pressed decrease index to previous tile
+            if event.key == pygame.K_LEFT:
+                self.selection_index -= 1
+            # limit selection_index to 2 till 18
+            if self.selection_index < 2:
+                self.selection_index = 2
+            if self.selection_index > 18:
+                self.selection_index = 18
 
-    # draw a infinite grid for orientation and tile placing reasons over the screen
+    # drawing
+    # draw an infinite grid for orientation and tile placing reasons over the screen
     def draw_tile_lines(self):
         # amount of columns
         cols = WINDOW_WIDTH // TILE_SIZE
@@ -93,5 +119,9 @@ class Editor:
 
         # drawing
         self.display_surface.fill('white')
+        # draw lines for grid
         self.draw_tile_lines()
+        # draw origin position
         pygame.draw.circle(self.display_surface, 'red', self.origin, 10)
+        # draw menu
+        self.menu.display()
