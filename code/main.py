@@ -17,7 +17,11 @@ class Main:
 
         # mouse cursor replacement
         # load image which should replace cursor
-        surface = load()
+        surface = (load
+                   ("/home/brot/Documents/Projects/Phyton/Pyrat_Platformer/graphics/cursors/mouse.png").convert_alpha())
+        # clickable area (1 para) is top coord of cursor which interacts when clicked / rest of cursor is just graphic
+        cursor = pygame.cursors.Cursor((0, 0), surface)
+        pygame.mouse.set_cursor(cursor)
 
     def run(self):
         while True:
