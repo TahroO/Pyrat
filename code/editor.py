@@ -41,6 +41,8 @@ class Editor:
             self.pan_input(event)
             # call selection index key behavior
             self.selection_hotkeys(event)
+            # check mouse clicks on menu buttons
+            self.menu_click(event)
 
     def pan_input(self, event):
         # middle mouse button was pressed or released
@@ -85,6 +87,12 @@ class Editor:
             if self.selection_index > 18:
                 self.selection_index = 18
 
+    def menu_click(self, event):
+        # check if a mouse button was clicked and if it was inside a button on screen
+        if event.type == pygame.MOUSEBUTTONDOWN and self.menu.rect.collidepoint(mouse_position()):
+            self.selection_index = self.menu.click(mouse_position(), mouse_buttons())
+
+
     # drawing
     # draw an infinite grid for orientation and tile placing reasons over the screen
     def draw_tile_lines(self):
@@ -118,10 +126,10 @@ class Editor:
         self.event_loop()
 
         # drawing
-        self.display_surface.fill('white')
+        self.display_surface.fill('grey')
         # draw lines for grid
         self.draw_tile_lines()
         # draw origin position
         pygame.draw.circle(self.display_surface, 'red', self.origin, 10)
         # draw menu
-        self.menu.display()
+        self.menu.display(self.selection_index)
