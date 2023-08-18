@@ -1,6 +1,9 @@
 import pygame
 from settings import *
 
+# import load function to load images
+from pygame.image import load
+
 from editor import Editor
 
 
@@ -11,6 +14,10 @@ class Main:
         self.clock = pygame.time.Clock()
 
         self.editor = Editor()
+
+        # mouse cursor replacement
+        # load image which should replace cursor
+        surface = load()
 
     def run(self):
         while True:
