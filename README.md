@@ -1,6 +1,6 @@
 # Pyrat
 
-# work in progess
+# work in progress
 
 ![Screenshot from 2023-08-19 18-48-01](https://github.com/TahroO/Pyrat/assets/115874178/3d6edb1e-83da-4779-af2f-480f67169a20)
 
