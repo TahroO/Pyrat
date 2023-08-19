@@ -50,11 +50,39 @@ class Editor:
             col = int(distance_to_origin.x / TILE_SIZE)
         else:
             col = int(distance_to_origin.x / TILE_SIZE) - 1
+
         if distance_to_origin.y > 0:
             row = int(distance_to_origin.y / TILE_SIZE)
         else:
             row = int(distance_to_origin.y / TILE_SIZE) - 1
         return col, row
+
+    # checks the neighbors around a given cell (selection)
+    def check_neighbors(self, cell_position):
+        pass
+        # create a local cluster - no need to check all tiles in the game later on - check only around selection
+        cluster_size = 3
+        # calculate all direct neighbors around the selected cell
+        local_cluster = [
+            (cell_position[0] + col - int(cluster_size / 2), cell_position[1] + row - int(cluster_size / 2))
+            for col in range(cluster_size)
+            for row in range(cluster_size)
+        ]
+
+        # draw neighbors
+        # check all neighbors in cluster
+        for cell in local_cluster:
+            # check if the neighbors are already placed tiles
+            if cell in self.canvas_data:
+                self.canvas_data[cell].terrain_neighbors = []
+                # do this for all neighbors in the cluster clockwise
+                for name, side in NEIGHBOR_DIRECTIONS.items():
+                    neighbor_cell = (cell[0] + side[0], cell[1] + side[1])
+                    # check if the neighbors are in data
+                    # choose images depending on letter occurrence A,B,C ...
+                    if neighbor_cell in self.canvas_data:
+                        if self.canvas_data[neighbor_cell].has_terrain:
+                            self.canvas_data[cell].terrain_neighbors.append(name)
 
     # INPUT
     def event_loop(self):
@@ -78,10 +106,10 @@ class Editor:
             # offset is distance between origin and mouse position as vector
             # this get movement from mouse when button is pressed without setting point to mouse position
             self.pan_offset = vector(mouse_position()) - self.origin
-            print('middle mouse button')
         if not mouse_buttons()[1]:
             self.pan_active = False
 
+        # mouse wheel
         if event.type == pygame.MOUSEWHEEL:
             # move y position when ctrl is pressed and mousewheel up or down is pressed
             if pygame.key.get_pressed()[pygame.K_LCTRL]:
@@ -90,9 +118,6 @@ class Editor:
             else:
                 self.origin.x -= event.y * 50
 
-        if self.pan_active:
-            # get position from mouse was imported on top -> mouse position
-            self.origin = mouse_position()
         # panning update
         if self.pan_active:
             # convert self.origin as vector to access x and y position
@@ -119,6 +144,7 @@ class Editor:
             self.selection_index = self.menu.click(mouse_position(), mouse_buttons())
 
     # triggered when canvas was clicked
+    # starting point
     def canvas_add(self):
         # if it was left-clicked and not at the menu
         if mouse_buttons()[0] and not self.menu.rect.collidepoint(mouse_position()):
@@ -129,9 +155,13 @@ class Editor:
 
                 # check if the current clicked cell is already inside the collection of cells
                 if current_cell in self.canvas_data:
+                    # there is already a Canvas Tile, so we could append this one to it with its id
                     self.canvas_data[current_cell].add_id(self.selection_index)
                 else:
+                    # there is no Canvas Tile, create a new one with the given cell
                     self.canvas_data[current_cell] = CanvasTile(self.selection_index)
+                # check all neighbors of the current cell to adjust the image properly
+                self.check_neighbors(current_cell)
                 # store actual selected cell to compare it
                 self.last_selected_cell = current_cell
 
@@ -170,8 +200,11 @@ class Editor:
 
             # terrain
             if tile.has_terrain:
-                test_surf = self.land_tiles['X']
-                self.display_surface.blit(test_surf, pos)
+                # convert neighbors to a string using join()
+                terrain_string = ''.join(tile.terrain_neighbors)
+                # safeguard if a graphic is missing use placeholder / joker which fits everywhere
+                terrain_style = terrain_string if terrain_string in self.land_tiles else 'X'
+                self.display_surface.blit(self.land_tiles[terrain_style], pos)
 
             # water
             if tile.has_water:
