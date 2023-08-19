@@ -3,7 +3,9 @@ from pygame.math import Vector2 as vector
 from pygame.mouse import get_pressed as mouse_buttons
 from pygame.mouse import get_pos as mouse_position
 from pygame.image import load
+
 from settings import *
+from support import *
 
 from menu import Menu
 
@@ -93,9 +95,33 @@ class Editor:
                         if self.canvas_data[neighbor_cell].has_water and self.canvas_data[cell].has_water and name == 'A':
                             self.canvas_data[cell].water_on_top = True
 
+    # import water tiles
     def import_tile(self):
         self.water_bottom = load('../graphics/terrain/water/water_bottom.png')
 
+        # animation import
+        # no sprites are used here because of performance reasons
+        # create a dictionary holding the animation tiles rather than sprites
+        self.animations = {}
+        for key, value in EDITOR_DATA.items():
+            if value['graphics']:
+                graphics = import_folder(value['graphics'])
+                # create entry in dictionary
+                self.animations[key] = {
+                    'frame index': 0,
+                    'frames': graphics,
+                    'length': len(graphics)
+                }
+
+    # updates the frame for animation
+    def animation_update(self, dt):
+        for value in self.animations.values():
+            # multiply with delta time to make it frame independent
+            value['frame index'] += ANIMATION_SPEED * dt
+            # as we only have 3 images in animation list we need to limit the value
+            if value['frame index'] >= value['length']:
+                # restart animation
+                value['frame index'] = 0
     # INPUT
     def event_loop(self):
         for event in pygame.event.get():
@@ -223,26 +249,40 @@ class Editor:
                 if tile.water_on_top:
                     self.display_surface.blit(self.water_bottom, pos)
                 else:
-                    test_surf = pygame.Surface((TILE_SIZE, TILE_SIZE))
-                    test_surf.fill('red')
-                    self.display_surface.blit(test_surf, pos)
+                    # separate the frames ( index is always 3 )
+                    frames = self.animations[3]['frames']
+                    # pick one item from the list
+                    index = int(self.animations[3]['frame index'])
+                    # create surface from index
+                    surface = frames[index]
+                    self.display_surface.blit(surface, pos)
 
             # coins
             if tile.coin:
-                test_surf = pygame.Surface((TILE_SIZE, TILE_SIZE))
-                test_surf.fill('yellow')
-                self.display_surface.blit(test_surf, pos)
+                frames = self.animations[tile.coin]['frames']
+                index = int(self.animations[tile.coin]['frame index'])
+                surface = frames[index]
+                # place the coins in the middle of the cell not at the top left
+                rect = surface.get_rect(center=(pos[0] + TILE_SIZE / 2, pos[1] + TILE_SIZE / 2))
+
+                self.display_surface.blit(surface, rect)
 
             # enemies
             if tile.enemy:
-                test_surf = pygame.Surface((TILE_SIZE, TILE_SIZE))
-                test_surf.fill('red')
-                self.display_surface.blit(test_surf, pos)
+                frames = self.animations[tile.enemy]['frames']
+                index = int(self.animations[tile.enemy]['frame index'])
+                surface = frames[index]
+                # place the enemy in the middle and bottom of the cell
+                rect = surface.get_rect(midbottom=(pos[0] + TILE_SIZE // 2, pos[1] + TILE_SIZE))
+
+                self.display_surface.blit(surface, rect)
 
     # UPDATE
     def run(self, dt):
-
         self.event_loop()
+
+        # updating
+        self.animation_update(dt)
 
         # drawing
         self.display_surface.fill('grey')
