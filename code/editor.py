@@ -42,6 +42,28 @@ class Editor:
         # create instance of the menu
         self.menu = Menu()
 
+        # objects
+        self.canvas_objects = pygame.sprite.Group()
+        # release object when not clicked anymore
+        self.object_drag_active = False
+
+        # Player
+        # Position 0 to use player
+        CanvasObject(
+            pos=(200, WINDOW_HEIGHT / 2),
+            frames=self.animations[0]['frames'],
+            tile_id=0,
+            origin=self.origin,
+            group=self.canvas_objects)
+        # SKY
+        self.sky_handle = CanvasObject(
+            pos=(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2),
+            frames=[self.sky_handle_surface],
+            tile_id=1,
+            origin=self.origin,
+            group=self.canvas_objects
+        )
+
     # SUPPORT
 
     # gets the current cell which was clicked
@@ -98,7 +120,10 @@ class Editor:
 
     # import water tiles
     def import_tile(self):
-        self.water_bottom = load('../graphics/terrain/water/water_bottom.png')
+        # import water
+        self.water_bottom = load('../graphics/terrain/water/water_bottom.png').convert_alpha()
+        # import sky
+        self.sky_handle_surface = load('../graphics/cursors/handle.png').convert_alpha()
 
         # animation import
         # no sprites are used here because of performance reasons
@@ -135,6 +160,8 @@ class Editor:
             self.selection_hotkeys(event)
             # check mouse clicks on menu buttons
             self.menu_click(event)
+            # place dragging before canvas add to prevent drawing one tile when selecting object
+            self.object_drag(event)
             # check mouse clicks for position
             self.canvas_add()
             # method to remove tiles
@@ -165,6 +192,10 @@ class Editor:
             # convert self.origin as vector to access x and y position
             self.origin = vector(mouse_position()) - self.pan_offset
 
+            # update every sprite to move it with display movement
+            for sprite in self.canvas_objects:
+                sprite.pan_position(self.origin)
+
     def selection_hotkeys(self, event):
         # check if button was pressed
         if event.type == pygame.KEYDOWN:
@@ -189,23 +220,32 @@ class Editor:
     # starting point
     def canvas_add(self):
         # if it was left-clicked and not at the menu
-        if mouse_buttons()[0] and not self.menu.rect.collidepoint(mouse_position()):
+        if mouse_buttons()[0] and not self.menu.rect.collidepoint(mouse_position()) and not self.object_drag_active:
             current_cell = self.get_current_cell()
+            if EDITOR_DATA[self.selection_index]['type'] == 'tile':
 
-            # only run this when a different cell than the last one is selected
-            if current_cell != self.last_selected_cell:
+                # only run this when a different cell than the last one is selected
+                if current_cell != self.last_selected_cell:
 
-                # check if the current clicked cell is already inside the collection of cells
-                if current_cell in self.canvas_data:
-                    # there is already a Canvas Tile, so we could append this one to it with its id
-                    self.canvas_data[current_cell].add_id(self.selection_index)
-                else:
-                    # there is no Canvas Tile, create a new one with the given cell
-                    self.canvas_data[current_cell] = CanvasTile(self.selection_index)
-                # check all neighbors of the current cell to adjust the image properly
-                self.check_neighbors(current_cell)
-                # store actual selected cell to compare it
-                self.last_selected_cell = current_cell
+                    # check if the current clicked cell is already inside the collection of cells
+                    if current_cell in self.canvas_data:
+                        # there is already a Canvas Tile, so we could append this one to it with its id
+                        self.canvas_data[current_cell].add_id(self.selection_index)
+                    else:
+                        # there is no Canvas Tile, create a new one with the given cell
+                        self.canvas_data[current_cell] = CanvasTile(self.selection_index)
+                    # check all neighbors of the current cell to adjust the image properly
+                    self.check_neighbors(current_cell)
+                    # store actual selected cell to compare it
+                    self.last_selected_cell = current_cell
+            else: # object
+                CanvasObject(
+                    pos=mouse_position(),
+                    frames=self.animations[self.selection_index]['frames'],
+                    tile_id=self.selection_index,
+                    origin=self.origin,
+                    group=self.canvas_objects
+                )
 
     # delete tiles / only if tile is selected (water remove water)
     def canvas_remove(self):
@@ -220,6 +260,22 @@ class Editor:
                     if self.canvas_data[current_cell].is_empty:
                         del self.canvas_data[current_cell]
                     self.check_neighbors(current_cell)
+
+    def object_drag(self, event):
+        # check if left-clicking somewhere on the editor
+        if event.type == pygame.MOUSEBUTTONDOWN and mouse_buttons()[0]:
+            # check all objects if clicked
+            for sprite in self.canvas_objects:
+                # check click with collision
+                if sprite.rect.collidepoint(event.pos):
+                    sprite.start_drag()
+                    self.object_drag_active = True
+        # it was something selected and mouse button is released
+        if event.type == pygame.MOUSEBUTTONUP and self.object_drag_active:
+            for sprite in self.canvas_objects:
+                if sprite.selected:
+                    sprite.drag_end(self.origin)
+                    self.object_drag_active = False
 
     # DRAWING
     # draw an infinite grid for orientation and tile placing reasons over the screen
@@ -294,6 +350,8 @@ class Editor:
                 rect = surface.get_rect(midbottom=(pos[0] + TILE_SIZE // 2, pos[1] + TILE_SIZE))
 
                 self.display_surface.blit(surface, rect)
+        # draw objects (player, trees at the canvas
+        self.canvas_objects.draw(self.display_surface)
 
     # UPDATE
     def run(self, dt):
@@ -301,6 +359,7 @@ class Editor:
 
         # updating
         self.animation_update(dt)
+        self.canvas_objects.update(dt)
 
         # drawing
         self.display_surface.fill('grey')
@@ -377,3 +436,60 @@ class CanvasTile:
     def check_content(self):
         if not self.has_terrain and not self.has_water and not self.coin and not self.enemy:
             self.is_empty = True
+
+
+# Objects - Sprite that will be animated - trees, sky, player
+class CanvasObject(pygame.sprite.Sprite):
+    # frames for animation
+    def __init__(self, pos, frames, tile_id, origin, group):
+        super().__init__(group)
+        self.tile_id = tile_id
+
+        # animation
+        self.frames = frames
+        self.frame_index = 0
+
+        # pick one of the surfaces out of the list frames
+        self.image = self.frames[self.frame_index]
+        self.rect = self.image.get_rect(center=pos)
+
+        # movement
+        self.distance_to_origin = vector(self.rect.topleft) - origin
+        # move objects around
+        self.selected = False
+        # distance between top left and point that player clicked on
+        self.mouse_offset = vector()
+
+    def start_drag(self):
+        self.selected = True
+        self.mouse_offset = vector(mouse_position()) - vector(self.rect.topleft)
+
+    def drag(self):
+        if self.selected:
+            self.rect.topleft = mouse_position() - self.mouse_offset
+
+    def drag_end(self, origin):
+        self.selected = False
+        # prevent porting player when padding display
+        self.distance_to_origin = vector(self.rect.topleft) - origin
+
+    # animation
+    def animate(self, dt):
+        # animate by increasing the index of frames
+        # multiply with delta time to avoid performance issues
+        self.frame_index += ANIMATION_SPEED * dt
+        # limit index of length of list to avoid len error
+        self.frame_index = 0 if self.frame_index >= len(self.frames) else self.frame_index
+        # cast index to int due to floating point dt
+        self.image = self.frames[int(self.frame_index)]
+        # if the surface changes too much not move around
+        self.rect = self.image.get_rect(midbottom=self.rect.midbottom)
+
+    # move the objects with display when middle mouse is pressed like with origin point
+    def pan_position(self, origin):
+        self.rect.topleft = origin + self.distance_to_origin
+
+    # update method to animate
+    def update(self, dt):
+        self.animate(dt)
+        self.drag()

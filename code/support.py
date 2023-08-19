@@ -14,7 +14,7 @@ def import_folder(path):
             # construct a destination path for the image
             full_path = path + '/' + image_name
             # use the path to store the image as surface
-            image_surface = pygame.image.load(full_path)
+            image_surface = pygame.image.load(full_path).convert_alpha()
             # add image surface to surface list
             surface_list.append(image_surface)
 
@@ -32,7 +32,7 @@ def import_folder_dict(path):
             # construct a destination path for the image
             full_path = path + '/' + image_name
             # use the path to store the image as surface
-            image_surface = pygame.image.load(full_path)
+            image_surface = pygame.image.load(full_path).convert_alpha()
             # separate filename from ending
             surface_dict[image_name.split('.')[0]] = image_surface
 
