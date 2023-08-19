@@ -1,5 +1,7 @@
 import pygame
+
 from settings import *
+from support import *
 
 # import load function to load images
 from pygame.image import load
@@ -12,8 +14,9 @@ class Main:
         pygame.init()
         self.display_surface = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
         self.clock = pygame.time.Clock()
+        self.imports()
 
-        self.editor = Editor()
+        self.editor = Editor(self.land_tiles)
 
         # mouse cursor replacement
         # load image which should replace cursor
@@ -22,6 +25,11 @@ class Main:
         # clickable area (1 para) is top coord of cursor which interacts when clicked / rest of cursor is just graphic
         cursor = pygame.cursors.Cursor((0, 0), surface)
         pygame.mouse.set_cursor(cursor)
+
+
+    def imports(self):
+        self.land_tiles = import_folder_dict('../graphics/terrain/land')
+        print(self.land_tiles)
 
     def run(self):
         while True:

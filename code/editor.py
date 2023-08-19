@@ -8,11 +8,14 @@ from menu import Menu
 
 
 class Editor:
-    def __init__(self):
+    def __init__(self, land_tiles):
 
         # main setup
         self.display_surface = pygame.display.get_surface()
         self.canvas_data = {}
+
+        # imports
+        self.land_tiles = land_tiles
 
         # navigation / vector imported by pygame.math
         self.origin = vector()
@@ -165,10 +168,29 @@ class Editor:
             # convert cell pos to a pixel value
             pos = self.origin + vector(cell_pos) * TILE_SIZE
 
+            # terrain
             if tile.has_terrain:
-                test_surf = pygame.Surface((TILE_SIZE, TILE_SIZE))
-                test_surf.fill('brown')
+                test_surf = self.land_tiles['X']
                 self.display_surface.blit(test_surf, pos)
+
+            # water
+            if tile.has_water:
+                test_surf = pygame.Surface((TILE_SIZE, TILE_SIZE))
+                test_surf.fill('blue')
+                self.display_surface.blit(test_surf, pos)
+
+            # coins
+            if tile.coin:
+                test_surf = pygame.Surface((TILE_SIZE, TILE_SIZE))
+                test_surf.fill('yellow')
+                self.display_surface.blit(test_surf, pos)
+
+            # enemies
+            if tile.enemy:
+                test_surf = pygame.Surface((TILE_SIZE, TILE_SIZE))
+                test_surf.fill('red')
+                self.display_surface.blit(test_surf, pos)
+
     # UPDATE
     def run(self, dt):
 
@@ -218,8 +240,12 @@ class CanvasTile:
         options = {key: value['style'] for key, value in EDITOR_DATA.items()}
         # check tile id with options - switch - if tile id == 2 ( terrain ) set boolean true ...
         match options[tile_id]:
-            case 'terrain': self.has_terrain = True
-            case 'water': self.has_water = True
+            case 'terrain':
+                self.has_terrain = True
+            case 'water':
+                self.has_water = True
             # coin and enemy will get overwritten as there could only be one
-            case 'coin': self.coin = tile_id
-            case 'enemy': self.enemy = tile_id
+            case 'coin':
+                self.coin = tile_id
+            case 'enemy':
+                self.enemy = tile_id
