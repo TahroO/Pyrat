@@ -26,7 +26,7 @@ class Main:
         cursor = pygame.cursors.Cursor((0, 0), surface)
         pygame.mouse.set_cursor(cursor)
 
-
+    # import the land terrain tiles
     def imports(self):
         self.land_tiles = import_folder_dict('../graphics/terrain/land')
         print(self.land_tiles)

@@ -2,6 +2,7 @@ import pygame, sys
 from pygame.math import Vector2 as vector
 from pygame.mouse import get_pressed as mouse_buttons
 from pygame.mouse import get_pos as mouse_position
+from pygame.image import load
 from settings import *
 
 from menu import Menu
@@ -16,6 +17,7 @@ class Editor:
 
         # imports
         self.land_tiles = land_tiles
+        self.import_tile()
 
         # navigation / vector imported by pygame.math
         self.origin = vector()
@@ -74,15 +76,25 @@ class Editor:
         for cell in local_cluster:
             # check if the neighbors are already placed tiles
             if cell in self.canvas_data:
+                # create a new empty list for terrain tiles
                 self.canvas_data[cell].terrain_neighbors = []
-                # do this for all neighbors in the cluster clockwise
+                # everytime remove water on top from neighbors (deleting reasons)
+                self.canvas_data[cell].water_on_top = False
+                # check for all neighbors in the cluster clockwise
                 for name, side in NEIGHBOR_DIRECTIONS.items():
                     neighbor_cell = (cell[0] + side[0], cell[1] + side[1])
                     # check if the neighbors are in data
                     # choose images depending on letter occurrence A,B,C ...
+
                     if neighbor_cell in self.canvas_data:
                         if self.canvas_data[neighbor_cell].has_terrain:
                             self.canvas_data[cell].terrain_neighbors.append(name)
+                    # water top neighbor
+                        if self.canvas_data[neighbor_cell].has_water and self.canvas_data[cell].has_water and name == 'A':
+                            self.canvas_data[cell].water_on_top = True
+
+    def import_tile(self):
+        self.water_bottom = load('../graphics/terrain/water/water_bottom.png')
 
     # INPUT
     def event_loop(self):
@@ -208,9 +220,12 @@ class Editor:
 
             # water
             if tile.has_water:
-                test_surf = pygame.Surface((TILE_SIZE, TILE_SIZE))
-                test_surf.fill('blue')
-                self.display_surface.blit(test_surf, pos)
+                if tile.water_on_top:
+                    self.display_surface.blit(self.water_bottom, pos)
+                else:
+                    test_surf = pygame.Surface((TILE_SIZE, TILE_SIZE))
+                    test_surf.fill('red')
+                    self.display_surface.blit(test_surf, pos)
 
             # coins
             if tile.coin:
