@@ -121,7 +121,7 @@ class Editor:
                             cell].has_water and name == 'A':
                             self.canvas_data[cell].water_on_top = True
 
-    # import water tiles
+    # import tiles
     def import_tile(self):
         # import water
         self.water_bottom = load('../graphics/terrain/water/water_bottom.png').convert_alpha()
@@ -141,6 +141,8 @@ class Editor:
                     'frames': graphics,
                     'length': len(graphics)
                 }
+        # preview tiles using dictionary comprehension for 'preview' type
+        self.preview_surfaces = {key: load(value['preview']) for key, value in EDITOR_DATA.items() if value['preview']}
 
     # updates the frame for animation
     def animation_update(self, dt):
@@ -152,6 +154,7 @@ class Editor:
                 # restart animation
                 value['frame index'] = 0
 
+    # returns hovered object
     def mouse_on_object(self):
         # check all sprites and if mouse is on any of those
         for sprite in self.canvas_objects:
@@ -258,7 +261,7 @@ class Editor:
                     )
                     self.object_timer.activate()
 
-    # delete tiles / only if tile is selected (water remove water)
+    # delete tiles - objects
     def canvas_remove(self):
         # only delete tiles when right click and not at menu
         if mouse_buttons()[2] and not self.menu.rect.collidepoint(mouse_position()):
@@ -356,7 +359,7 @@ class Editor:
                 index = int(self.animations[tile.coin]['frame index'])
                 surface = frames[index]
                 # place the coins in the middle of the cell not at the top left
-                rect = surface.get_rect(center=(pos[0] + TILE_SIZE / 2, pos[1] + TILE_SIZE / 2))
+                rect = surface.get_rect(center=(pos[0] + TILE_SIZE // 2, pos[1] + TILE_SIZE // 2))
 
                 self.display_surface.blit(surface, rect)
 
@@ -371,6 +374,59 @@ class Editor:
                 self.display_surface.blit(surface, rect)
         # draw objects (player, trees at the canvas
         self.canvas_objects.draw(self.display_surface)
+
+    def preview(self):
+        # the object which is hovered over
+        selected_object = self.mouse_on_object()
+        # do not show preview when hovering over the menu
+        if not self.menu.rect.collidepoint(mouse_position()):
+            # draws line around objects when hovered over them
+            if selected_object:
+                # create a rectangle copy of selected object, inflate it to draw lines around it
+                rect = selected_object.rect.inflate(10, 10)
+                # color of lines
+                color = 'black'
+                # width of lines
+                width = 3
+                # length of lines
+                size = 15
+                # closed parameter ( should lines be closed )
+                # points 3* = start, middle, end point of lines to be drawing
+                # top left
+                pygame.draw.lines(self.display_surface, color, False,
+                                  ((rect.left, rect.top + size), rect.topleft,
+                                   (rect.left + size, rect.top)), width)
+                # top right
+                pygame.draw.lines(self.display_surface, color, False,
+                                  ((rect.right, rect.top + size), rect.topright,
+                                   (rect.right - size, rect.top)), width)
+                # bottom left
+                pygame.draw.lines(self.display_surface, color, False,
+                                  ((rect.left, rect.bottom - size), rect.bottomleft,
+                                   (rect.left + size, rect.bottom)), width)
+                # bottom right
+                pygame.draw.lines(self.display_surface, color, False,
+                                  ((rect.right, rect.bottom - size), rect.bottomright,
+                                   (rect.right - size, rect.bottom)), width)
+            else:
+                # create a dictionary of items / copy 'type'
+                type_dict = {key: value['type'] for key, value, in EDITOR_DATA.items()}
+                # gets a surface using load method
+                surface = self.preview_surfaces[self.selection_index].copy()
+                # set transparency for preview
+                surface.set_alpha(200)
+
+                # split using 'type'
+                # tile
+                if type_dict[self.selection_index] == 'tile':
+                    # store current cell
+                    current_cell = self.get_current_cell()
+                    # create rectangle
+                    rect = surface.get_rect(topleft=self.origin + vector(current_cell) * TILE_SIZE)
+                # object
+                else:
+                    rect = surface.get_rect(center=mouse_position())
+                self.display_surface.blit(surface, rect)
 
     # UPDATE
     def run(self, dt):
@@ -389,6 +445,8 @@ class Editor:
         self.draw_tile_lines()
         # draw origin position
         pygame.draw.circle(self.display_surface, 'red', self.origin, 10)
+        # draw preview of selected object
+        self.preview()
         # draw menu
         self.menu.display(self.selection_index)
 
@@ -471,6 +529,7 @@ class CanvasObject(pygame.sprite.Sprite):
 
         # pick one of the surfaces out of the list frames
         self.image = self.frames[self.frame_index]
+        # center of object should be at mouse position
         self.rect = self.image.get_rect(center=pos)
 
         # movement
