@@ -10,6 +10,8 @@ from support import *
 from menu import Menu
 from timer import Timer
 
+from random import choice, randint
+
 
 class Editor:
     def __init__(self, land_tiles):
@@ -21,6 +23,18 @@ class Editor:
         # imports
         self.land_tiles = land_tiles
         self.import_tile()
+
+        # clouds
+        # create empty list of clouds
+        self.current_clouds = []
+        # import cloud images
+        self.cloud_surfaces = import_folder('../graphics/clouds')
+        # create a timer for drawing clouds
+        self.cloud_timer = pygame.USEREVENT + 1
+        # timer every 2 sec
+        pygame.time.set_timer(self.cloud_timer, 2000)
+        # create some clouds to have them already when game starts
+        self.startup_clouds()
 
         # navigation / vector imported by pygame.math
         self.origin = vector()
@@ -178,6 +192,8 @@ class Editor:
             self.canvas_add()
             # method to remove tiles
             self.canvas_remove()
+            # create the clouds
+            self.create_clouds(event)
 
     def pan_input(self, event):
         # middle mouse button was pressed or released
@@ -300,6 +316,7 @@ class Editor:
                     self.object_drag_active = False
 
     # DRAWING
+
     # draw an infinite grid for orientation and tile placing reasons over the screen
     def draw_tile_lines(self):
         # amount of columns
@@ -327,6 +344,7 @@ class Editor:
         # place the green support surface on display surface
         self.display_surface.blit(self.support_line_surface, (0, 0))
 
+    # draw the level
     def draw_level(self):
         for cell_pos, tile in self.canvas_data.items():
             # convert cell pos to a pixel value
@@ -375,6 +393,7 @@ class Editor:
         # draw objects (player, trees at the canvas
         self.canvas_objects.draw(self.display_surface)
 
+    # show a preview of the selected tile or object
     def preview(self):
         # the object which is hovered over
         selected_object = self.mouse_on_object()
@@ -428,6 +447,73 @@ class Editor:
                     rect = surface.get_rect(center=mouse_position())
                 self.display_surface.blit(surface, rect)
 
+    # SKY
+
+    def display_sky(self, dt):
+        self.display_surface.fill(SKY_COLOR)
+        # position of the horizon point in the middle of the screen
+        # sky handle button following
+        y_pos = self.sky_handle.rect.centery
+
+        # horizon lines
+        if y_pos > 0:
+            horizon_rect1 = pygame.Rect(0, y_pos - 10, WINDOW_WIDTH, 10)
+            horizon_rect2 = pygame.Rect(0, y_pos - 16, WINDOW_WIDTH, 4)
+            horizon_rect3 = pygame.Rect(0, y_pos - 20, WINDOW_WIDTH, 2)
+
+            pygame.draw.rect(self.display_surface, HORIZON_TOP_COLOR, horizon_rect1)
+            pygame.draw.rect(self.display_surface, HORIZON_TOP_COLOR, horizon_rect2)
+            pygame.draw.rect(self.display_surface, HORIZON_TOP_COLOR, horizon_rect3)
+
+            # cloud drawing
+            self.display_cloud(dt, y_pos)
+
+        # fill the display with water when no sky is visible
+        if 0 < y_pos < WINDOW_HEIGHT:
+            # sea - rectangle placed below the horizon line
+            sea_rect = pygame.Rect(0, y_pos, WINDOW_WIDTH, WINDOW_HEIGHT)
+            pygame.draw.rect(self.display_surface, SEA_COLOR, sea_rect)
+            pygame.draw.line(self.display_surface, HORIZON_COLOR, (0, y_pos), (WINDOW_WIDTH, y_pos), 3)
+        if y_pos < 0:
+            self.display_surface.fill(SEA_COLOR)
+
+    # drawing the clouds
+    def display_cloud(self, dt, y_pos):
+        # clouds currently existing
+        for cloud in self.current_clouds:  # [{surf, pos, speed}]
+            cloud['pos'][0] -= cloud['speed'] * dt
+            x = cloud['pos'][0]
+            # clouds should move up and down following the horizon
+            y = y_pos - cloud['pos'][1]
+            self.display_surface.blit(cloud['surface'], (x, y))
+
+    def create_clouds(self, event):
+        # only create when timer runs
+        if event.type == self.cloud_timer:
+            # choose one of the existing clouds with choice by random
+            surface = choice(self.cloud_surfaces)
+            # scale the clouds by 2 to create difference, but only at random occurrences
+            surface = pygame.transform.scale2x(surface) if randint(0, 4) < 2 else surface
+            # a list of x,y coords for position of clouds - random
+            pos = [WINDOW_WIDTH + randint(50, 100), randint(0, WINDOW_HEIGHT)]
+            # random speed of cloud movement
+            speed = randint(20, 50)
+            # create a random list of clouds
+            self.current_clouds.append({'surface': surface, 'pos': pos, 'speed': speed})
+
+            # limit amount of clouds created, to not crash performance when game runs longer
+            self.current_clouds = [cloud for cloud in self.current_clouds if cloud['pos'][0] > -400]
+
+    # initiate clouds directly so there no need to wait for them to appear
+    def startup_clouds(self):
+        # create 20 clouds
+        for i in range(20):
+            surface = pygame.transform.scale2x(
+                choice(self.cloud_surfaces)) if randint(0, 4) < 2 else choice(self.cloud_surfaces)
+            pos = [randint(0, WINDOW_WIDTH), randint(0, WINDOW_HEIGHT)]
+            speed = randint(20, 50)
+            self.current_clouds.append({'surface': surface, 'pos': pos, 'speed': speed})
+
     # UPDATE
     def run(self, dt):
         self.event_loop()
@@ -439,12 +525,14 @@ class Editor:
 
         # drawing
         self.display_surface.fill('grey')
+        # display sky first as this is in the background
+        self.display_sky(dt)
         # draw the level
         self.draw_level()
         # draw lines for grid
         self.draw_tile_lines()
         # draw origin position
-        pygame.draw.circle(self.display_surface, 'red', self.origin, 10)
+        # pygame.draw.circle(self.display_surface, 'red', self.origin, 10)
         # draw preview of selected object
         self.preview()
         # draw menu
