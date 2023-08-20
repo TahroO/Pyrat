@@ -8,6 +8,7 @@ from settings import *
 from support import *
 
 from menu import Menu
+from timer import Timer
 
 
 class Editor:
@@ -46,6 +47,8 @@ class Editor:
         self.canvas_objects = pygame.sprite.Group()
         # release object when not clicked anymore
         self.object_drag_active = False
+        # timer object to prevent multiple placing objects when button is pressed
+        self.object_timer = Timer(400)
 
         # Player
         # Position 0 to use player
@@ -149,6 +152,12 @@ class Editor:
                 # restart animation
                 value['frame index'] = 0
 
+    def mouse_on_object(self):
+        # check all sprites and if mouse is on any of those
+        for sprite in self.canvas_objects:
+            if sprite.rect.collidepoint(mouse_position()):
+                return sprite
+
     # INPUT
     def event_loop(self):
         for event in pygame.event.get():
@@ -238,20 +247,30 @@ class Editor:
                     self.check_neighbors(current_cell)
                     # store actual selected cell to compare it
                     self.last_selected_cell = current_cell
-            else: # object
-                CanvasObject(
-                    pos=mouse_position(),
-                    frames=self.animations[self.selection_index]['frames'],
-                    tile_id=self.selection_index,
-                    origin=self.origin,
-                    group=self.canvas_objects
-                )
+            else:  # object
+                if not self.object_timer.active:
+                    CanvasObject(
+                        pos=mouse_position(),
+                        frames=self.animations[self.selection_index]['frames'],
+                        tile_id=self.selection_index,
+                        origin=self.origin,
+                        group=self.canvas_objects
+                    )
+                    self.object_timer.activate()
 
     # delete tiles / only if tile is selected (water remove water)
     def canvas_remove(self):
         # only delete tiles when right click and not at menu
         if mouse_buttons()[2] and not self.menu.rect.collidepoint(mouse_position()):
 
+            # delete object
+            selected_object = self.mouse_on_object()
+            if selected_object:
+                # restrict deleting objects to palm tress, exclude player and sky
+                if EDITOR_DATA[selected_object.tile_id]['style'] not in ('player', 'sky'):
+                    selected_object.kill()
+
+            # delete tiles
             if self.canvas_data:
                 current_cell = self.get_current_cell()
                 if current_cell in self.canvas_data:
@@ -360,6 +379,7 @@ class Editor:
         # updating
         self.animation_update(dt)
         self.canvas_objects.update(dt)
+        self.object_timer.update()
 
         # drawing
         self.display_surface.fill('grey')
