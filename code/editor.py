@@ -84,9 +84,10 @@ class Editor:
     # SUPPORT
 
     # gets the current cell which was clicked
-    def get_current_cell(self):
+    def get_current_cell(self, obj = None):
         # calculate the distance between mouse click and origin using vectors
-        distance_to_origin = vector(mouse_position()) - self.origin
+        distance_to_origin = vector(mouse_position()) - self.origin if not obj \
+            else vector(obj.distance_to_origin) - self.origin
         # make sure cells around origin are not all 0,0 (int division would do that for negative values)
         if distance_to_origin.x > 0:
             # calculate cell position by dividing distance to origin by tile size and int it to get full numbers
@@ -175,12 +176,80 @@ class Editor:
             if sprite.rect.collidepoint(mouse_position()):
                 return sprite
 
+    def create_grid(self):
+        # add objects to tiles
+        for tile in self.canvas_data.values():
+            tile.objects = []
+        for obj in self.canvas_objects:
+            current_cell = self.get_current_cell(obj)
+            offset = vector(obj.distance_to_origin) - (vector(current_cell) * TILE_SIZE)
+
+            if current_cell in self.canvas_data: # tile exists already so place it
+                self.canvas_data[current_cell].add_id(obj.tile_id, offset)
+            else: # no tile exists yet, create a new one
+                self.canvas_data[current_cell] = CanvasTile(obj.tile_id, offset)
+
+
+        # create an empty grid (actual data structure needed for the level)
+        # all different layers which are used inside the level
+        # ORDER IS IMPORTANT!
+        layers = {
+            'water': {},
+            'bg palms': {},
+            'terrain': {},
+            'enemies': {},
+            'coins': {},
+            'fg objects': {},
+        }
+
+        # grid offset
+        # canvas_data.keys are the positions -> sort them and get the lowest (first x value) item
+        left = sorted(self.canvas_data.keys(), key = lambda tile: tile[0])[0][0]
+        # get the same list with y values sorted from lowest to highest get the top most position (y value)
+        top = sorted(self.canvas_data.keys(), key = lambda tile: tile[1])[0][1]
+
+        # fill the grid
+        for tile_pos, tile in self.canvas_data.items():
+            row_adjusted = tile_pos[1] - top
+            col_adjusted = tile_pos[0] - left
+            # convert grid positions to actual x y coordinates for pixels
+            x = col_adjusted * TILE_SIZE
+            y = row_adjusted * TILE_SIZE
+
+            # check for different tiles and add them to the grid
+            if tile.has_water:
+                layers['water'][(x, y)] = tile.get_water()
+
+            if tile.has_terrain:
+                # get the terrain graphic only if it exists in the collection else get the placeholder graphic
+                layers['terrain'][(x, y)] = tile.get_terrain() if tile.get_terrain() in self.land_tiles else 'X'
+
+            if tile.coin:
+                layers['coins'][(x + TILE_SIZE // 2, y + TILE_SIZE // 2)] = tile.coin
+
+            if tile.enemy:
+                layers['enemies'][(x, y)] = tile.enemy
+
+            if tile.objects:
+                # collection of tuples (obj, offset)
+                for obj, offset in tile.objects:
+                    # check if background or foreground objects
+                    # check using keys from objects - background has 'style' and 'palm_bg' nr 15-18
+                    if obj in [key for key, value in EDITOR_DATA.items() if value['style'] == 'palm_bg']:
+                        layers['bg palms'][(int(x + offset.x), int(y + offset.y))] = obj
+                    else:  # it is a foreground object
+                        layers['fg objects'][(int(x + offset.x), int(y + offset.y))] = obj
+
+        return layers
+
     # INPUT
     def event_loop(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
+                print(self.create_grid())
             self.pan_input(event)
             # call selection index key behavior
             self.selection_hotkeys(event)
@@ -541,7 +610,7 @@ class Editor:
 
 # class / object to store all information stored inside tiles
 class CanvasTile:
-    def __init__(self, tile_id):
+    def __init__(self, tile_id, offset = vector()):
 
         # TERRAIN
         self.has_terrain = False
@@ -564,10 +633,10 @@ class CanvasTile:
         # OBJECTS
         self.objects = []
 
-        self.add_id(tile_id)
+        self.add_id(tile_id, offset = offset)
         self.is_empty = False
 
-    def add_id(self, tile_id):
+    def add_id(self, tile_id, offset = vector()):
         # what dictionary styles are there?
         options = {key: value['style'] for key, value in EDITOR_DATA.items()}
         # check tile id with options - switch - if tile id == 2 ( terrain ) set boolean true ...
@@ -581,6 +650,11 @@ class CanvasTile:
                 self.coin = tile_id
             case 'enemy':
                 self.enemy = tile_id
+            # if none of this cases are true do this
+            case _: # append objects to existing collection
+                # check if they already exist so no two objects are at the exact same position
+                if (tile_id, offset) not in self.objects:
+                    self.objects.append((tile_id, offset))
 
     def remove_id(self, tile_id):
         # what dictionary styles are there?
@@ -603,6 +677,12 @@ class CanvasTile:
         if not self.has_terrain and not self.has_water and not self.coin and not self.enemy:
             self.is_empty = True
 
+    def get_water(self):
+        # return the correct water tile depending on if there is already one
+        return 'bottom' if self.water_on_top else 'top'
+
+    def get_terrain(self):
+        return ''.join(self.terrain_neighbors)
 
 # Objects - Sprite that will be animated - trees, sky, player
 class CanvasObject(pygame.sprite.Sprite):
