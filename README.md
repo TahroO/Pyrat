@@ -8,7 +8,7 @@
 
 A Mario - styled platformer with included editor built in pygame
 
-I am followed a tutorial for this
+I followed a tutorial for this
 
 https://youtu.be/qYomF9p_SYM?si=2ArcUw0GJ4ocYP7E
 
