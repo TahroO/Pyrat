@@ -58,7 +58,12 @@ class Editor:
         self.menu = Menu()
 
         # objects
+        # all objects (fg & bg) together
         self.canvas_objects = pygame.sprite.Group()
+        # foreground objects
+        self.foreground = pygame.sprite.Group()
+        # background objects
+        self.background = pygame.sprite.Group()
         # release object when not clicked anymore
         self.object_drag_active = False
         # timer object to prevent multiple placing objects when button is pressed
@@ -71,14 +76,15 @@ class Editor:
             frames=self.animations[0]['frames'],
             tile_id=0,
             origin=self.origin,
-            group=self.canvas_objects)
+            group=[self.canvas_objects, self.foreground]
+        )
         # SKY
         self.sky_handle = CanvasObject(
             pos=(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2),
             frames=[self.sky_handle_surface],
             tile_id=1,
             origin=self.origin,
-            group=self.canvas_objects
+            group=[self.canvas_objects, self.background]
         )
 
     # SUPPORT
@@ -337,12 +343,16 @@ class Editor:
                     self.last_selected_cell = current_cell
             else:  # object
                 if not self.object_timer.active:
+                    # divide fg and bg objects into groups
+                    groups = [self.canvas_objects, self.background] if (
+                            EDITOR_DATA[self.selection_index]['style'] == 'palm_bg') \
+                        else [self.canvas_objects, self.foreground]
                     CanvasObject(
                         pos=mouse_position(),
                         frames=self.animations[self.selection_index]['frames'],
                         tile_id=self.selection_index,
                         origin=self.origin,
-                        group=self.canvas_objects
+                        group=groups
                     )
                     self.object_timer.activate()
 
@@ -415,6 +425,7 @@ class Editor:
 
     # draw the level
     def draw_level(self):
+        self.background.draw(self.display_surface)
         for cell_pos, tile in self.canvas_data.items():
             # convert cell pos to a pixel value
             pos = self.origin + vector(cell_pos) * TILE_SIZE
@@ -460,7 +471,7 @@ class Editor:
 
                 self.display_surface.blit(surface, rect)
         # draw objects (player, trees at the canvas
-        self.canvas_objects.draw(self.display_surface)
+        self.foreground.draw(self.display_surface)
 
     # show a preview of the selected tile or object
     def preview(self):
