@@ -7,3 +7,9 @@
 
 
 A Mario - styled platformer with included editor built in pygame
+
+I am followed a tutorial for this
+
+https://www.youtube.com/watch?v=qYomF9p_SYM&t=19254s
+
+
