@@ -14,11 +14,12 @@ from random import choice, randint
 
 
 class Editor:
-    def __init__(self, land_tiles):
+    def __init__(self, land_tiles, switch):
 
         # main setup
         self.display_surface = pygame.display.get_surface()
         self.canvas_data = {}
+        self.switch = switch
 
         # imports
         self.land_tiles = land_tiles
@@ -254,8 +255,9 @@ class Editor:
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
+                # if enter was pressed switch to game mode and call transition
             if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
-                print(self.create_grid())
+                self.switch(self.create_grid())
             self.pan_input(event)
             # call selection index key behavior
             self.selection_hotkeys(event)

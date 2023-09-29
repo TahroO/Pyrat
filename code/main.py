@@ -1,4 +1,5 @@
 import pygame
+from pygame.math import Vector2 as vector
 
 from settings import *
 from support import *
@@ -7,6 +8,7 @@ from support import *
 from pygame.image import load
 
 from editor import Editor
+from level import Level
 
 
 class Main:
@@ -16,7 +18,11 @@ class Main:
         self.clock = pygame.time.Clock()
         self.imports()
 
-        self.editor = Editor(self.land_tiles)
+        # check if editor is active to switch between editor and level updater
+        self.editor_active = True
+        # transition object when switching between level and editor mode
+        self.transition = Transition(self.toggle)
+        self.editor = Editor(self.land_tiles, self.switch)
 
         # mouse cursor replacement
         # load image which should replace cursor
@@ -31,12 +37,69 @@ class Main:
         self.land_tiles = import_folder_dict('../graphics/terrain/land')
         print(self.land_tiles)
 
+    # switch editor on and off helper method
+    def toggle(self):
+        self.editor_active = not self.editor_active
+
+    # call transition of game modes
+    def switch(self, grid = None):
+        # starting animation
+        self.transition.active = True
+        # we go from editor to level
+        if grid:
+            # Level object needs to know switch status
+            # create a new level
+            self.level = Level(grid, self.switch)
+
     def run(self):
         while True:
             dt = self.clock.tick() / 1000
 
-            self.editor.run(dt)
+            # run editor only on editor mode
+            if self.editor_active:
+                self.editor.run(dt)
+            else:
+                # run level mode
+                self.level.run(dt)
+            # do transition when change happens
+            self.transition.display(dt)
             pygame.display.update()
+
+
+# Transition object class to make switch between editor and level smoother
+class Transition:
+    def __init__(self, toggle):
+        self.display_surface = pygame.display.get_surface()
+        self.toggle = toggle
+        self.active = False
+
+        # should be a circle closing and opening to mid
+        self.border_width = 0
+        self.direction = 1
+        self.center = (WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2)
+        self.radius = vector(self.center).magnitude()
+        # make sure the whole window is filled - acts as a reverse point
+        self.threshold = self.radius + 100
+
+    def display(self, dt):
+        # if transition happens
+        if self.active:
+            # increase width of border circle -> closing
+            self.border_width += 1000 * dt * self.direction
+            # reverse the direction to open transition again when fully closed
+            if self.border_width >= self.threshold:
+                self.direction = -1
+                # toggle game modes when transition is active
+                self.toggle()
+
+            # stop transition when opening animation is done completely
+            if self.border_width < 0:
+                # reset all stats to start over
+                self.active = False
+                self.border_width = 0
+                self.direction = 1
+            # draw border in defined direction (open - close)
+            pygame.draw.circle(self.display_surface, 'black', self.center, self.radius, int(self.border_width))
 
 
 if __name__ == '__main__':
