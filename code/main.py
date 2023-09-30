@@ -48,8 +48,11 @@ class Main:
         # we go from editor to level
         if grid:
             # Level object needs to know switch status
-            # create a new level
-            self.level = Level(grid, self.switch)
+            # create a new level everytime a switch happens
+            # to not load every graphic on its on pass in a dictionary
+            self.level = Level(grid, self.switch, {
+                'land': self.land_tiles
+            })
 
     def run(self):
         while True:
