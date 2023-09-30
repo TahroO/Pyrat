@@ -10,6 +10,8 @@ from pygame.image import load
 from editor import Editor
 from level import Level
 
+from os import walk
+
 
 class Main:
     def __init__(self):
@@ -46,6 +48,19 @@ class Main:
         self.diamond= import_folder('../graphics/items/diamond')
         self.particle = import_folder('../graphics/items/particle')
 
+        # PALM TREES
+        # store all animations using dictionary comprehension -> walk creates a list of folder names
+        self.palms = {folder: import_folder(f'../graphics/terrain/palm/{folder}')
+                      for folder in list(walk('../graphics/terrain/palm'))[0][1]}
+
+        # ENEMIES
+        self.spike = load('../graphics/enemies/spikes/spikes.png').convert_alpha()
+        self.tooth = {folder: import_folder(f'../graphics/enemies/tooth/{folder}')
+                      for folder in list(walk('../graphics/enemies/tooth'))[0][1]}
+        # import only shell left and flip entire sprite when shell right is used
+        self.shell = {folder: import_folder(f'../graphics/enemies/shell_left/{folder}')
+                      for folder in list(walk('../graphics/enemies/shell_left'))[0][1]}
+
     # switch editor on and off helper method
     def toggle(self):
         self.editor_active = not self.editor_active
@@ -60,15 +75,22 @@ class Main:
             # create a new level everytime a switch happens
             # to not load every graphic on its on pass in a dictionary
             self.level = Level(grid, self.switch, {
+                # land
                 'land': self.land_tiles,
-                # water bottom
+                # water
                 'water bottom': self.water_bottom,
                 'water top': self.water_top_animation,
-                # coins - types
+                # coins + particle
                 'gold': self.gold,
                 'silver': self.silver,
                 'diamond': self.diamond,
                 'particle': self.particle,
+                # palms
+                'palms': self.palms,
+                # enemies
+                'spikes': self.spike,
+                'tooth': self.tooth,
+                'shell': self.shell,
             })
 
     def run(self):

@@ -16,6 +16,7 @@ class Generic(pygame.sprite.Sprite):
         self.rect = self.image.get_rect(topleft=pos)
 
 
+# ANIMATIONS
 # represents animated objects -> water - subclass of Generic
 class Animated(Generic):
     def __init__(self, assets, pos, group):
@@ -61,6 +62,43 @@ class Coin(Animated):
         # center all images inside the cells
         self.rect = self.image.get_rect(center = pos)
         self.coin_type = coin_type
+
+
+# ENEMIES
+class Spikes(Generic):
+    def __init__(self, surf, pos, group):
+        super().__init__(pos, surf, group)
+
+
+class Tooth(Generic):
+    def __init__(self, assets, pos, group):
+        self.animation_frames = assets
+        self.frame_index = 0
+        self.orientation = 'right'
+        surf = self.animation_frames[f'run_{self.orientation}'][self.frame_index]
+        super().__init__(pos, surf, group)
+        # relocate sprite to set it in correct place in cell (without gap)
+        self.rect.bottom = self.rect.top + TILE_SIZE
+
+
+class Shell(Generic):
+    def __init__(self, orientation, assets, pos, group):
+        self.orientation = orientation
+        # to use both directions of shell use assets.copy
+        # otherwise shell will point in the same direction as last one
+        self.animation_frames = assets.copy()
+        # check if to flip animation
+        if orientation == 'right':
+            for key, value in self.animation_frames.items():
+                # overwrite keys with flipped sprites
+                self.animation_frames[key] = [pygame.transform.flip(surf, True, False) for surf in value]
+
+        self.frame_index = 0
+        self.status = 'idle'
+        super().__init__(pos, self.animation_frames[self.status][self.frame_index], group)
+        # relocate sprite to set it in correct place in cell (without gap)
+        self.rect.bottom = self.rect.top + TILE_SIZE
+
 
 # represents the player object - subclass of Generic
 class Player(Generic):
