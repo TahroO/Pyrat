@@ -16,6 +16,15 @@ class Generic(pygame.sprite.Sprite):
         self.rect = self.image.get_rect(topleft=pos)
 
 
+# Class defining custom collisions
+class Block(Generic):
+    # spawn an invisible block for collision (no sprite)
+    def __init__(self, pos, size, group):
+        # placeholder surface with a given size
+        surf = pygame.Surface(size)
+        super().__init__(pos, surf, group)
+
+
 # ANIMATIONS
 # represents animated objects -> water - subclass of Generic
 class Animated(Generic):
@@ -102,18 +111,26 @@ class Shell(Generic):
 
 # represents the player object - subclass of Generic
 class Player(Generic):
-    def __init__(self, pos, group):
-        super().__init__(pos, pygame.Surface((32, 64)), group)
+    def __init__(self, pos, group, collision_sprites):
+        super().__init__(pos, pygame.Surface((80, 64)), group)
         self.image.fill('red')
 
         # store movement of the player
         # store the direction from the player as a vector
         self.direction = vector()
-        # store the position from the player as a vector depending on rectangle top left pos
-        self.pos = vector(self.rect.topleft)
+        # store the position from the player as a vector depending on rectangle center pos
+        self.pos = vector(self.rect.center)
         # store speed of the player
         self.speed = 300
+        # gravity value for falling / jumping
+        self.gravity = 4
+        # boolean if object is touching a floor to determine possible jump
+        self.on_floor = False
 
+        # collision section
+        self.collision_sprites = collision_sprites
+        # player hit box
+        self.hitbox = self.rect.inflate(-50, 0)
     # check player related input
     def input(self):
         # get all pressed keys
@@ -128,14 +145,66 @@ class Player(Generic):
             # no direction key was pressed do not move either
             self.direction.x = 0
 
-    def move(self, dt):
-        # pygame normally only store integers for movement
-        # use separate variable to store floating point numbers
-        self.pos += self.direction * self.speed * dt
-        # move top left of the rectangle to moved position
-        self.rect.topleft = (round(self.pos.x), round(self.pos.y))
+        # jumping mechanic
+        # if jump key was pressed and player is on ground (able to jump)
+        if keys[pygame.K_SPACE] and self.on_floor:
+            # move player up in y direction
+            self.direction.y = -2
 
+    def move(self, dt):
+        # horizontal movement
+        self.pos.x += self.direction.x * self.speed * dt
+        self.hitbox.centerx = round(self.pos.x)
+        self.rect.centerx = self.hitbox.centerx
+        self.collision('horizontal')
+        # vertical movement
+        self.pos.y += self.direction.y * self.speed * dt
+        self.hitbox.centery = round(self.pos.y)
+        self.rect.centery = self.hitbox.centery
+        self.collision('vertical')
+
+    # gravity
+    def apply_gravity(self, dt):
+        # falling down increase y exponential ( 2 * +=)
+        self.direction.y += self.gravity * dt
+        self.rect.y += self.direction.y
+
+    # check if player is on floor and able to jump
+    # (otherwise air jumps are possible)
+    def check_on_floor(self):
+        floor_rect = pygame.Rect(self.hitbox.bottomleft, (self.hitbox.width, 2))
+        floor_sprites = [sprite for sprite in self.collision_sprites if sprite.rect.colliderect(floor_rect)]
+        self.on_floor = True if floor_sprites else False
+    # collision
+    def collision(self, direction):
+        # check all possible sprites to collide with
+        for sprite in self.collision_sprites:
+            # check if player hit box collide with sprite
+            if sprite.rect.colliderect(self.hitbox):
+                if direction == 'horizontal':
+                    # moving right
+                    if self.direction.x > 0:
+                        # if collision happens set right site of hit box to left side of obstacle
+                        self.hitbox.right = sprite.rect.left
+                    # moving left
+                    if self.direction.x < 0:
+                        # if collision happens set right site of hit box to left side of obstacle
+                        self.hitbox.left = sprite.rect.right
+                    # update rectangle center when collision happens to draw player correct
+                    self.rect.centerx = self.hitbox.centerx
+                    self.pos.x = self.hitbox.centerx
+                else:  # check vertical collision
+                    # player hit a wall while jumping - set player top to bottom side of obstacle
+                    self.hitbox.top = sprite.rect.bottom if self.direction.y < 0 else self.hitbox.top
+                    # player moving down and overlaps wall with bottom - set position on top of obstacle
+                    self.hitbox.bottom = sprite.rect.top if self.direction.y > 0 else self.hitbox.bottom
+                    # update rectangle center when collision happens to draw player correct
+                    self.rect.centery, self.pos.y = self.hitbox.centery, self.hitbox.centery
+                    # player collided with something on the ground reset gravity (fall - speed)
+                    self.direction.y = 0
     # translate movement into updates for screen
     def update(self, dt):
         self.input()
+        self.apply_gravity(dt)
         self.move(dt)
+        self.check_on_floor()

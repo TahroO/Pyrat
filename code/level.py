@@ -17,6 +17,7 @@ class Level:
         self.all_sprites = pygame.sprite.Group()
         self.coin_sprites = pygame.sprite.Group()
         self.damage_sprites = pygame.sprite.Group()
+        self.collision_sprites = pygame.sprite.Group()
 
         # when level is created
         self.build_level(grid, asset_dict)
@@ -31,7 +32,8 @@ class Level:
             for pos, data in layer.items():
                 if layer_name == 'terrain':
                     # create a generic sprite
-                    Generic(pos, asset_dict['land'][data], self.all_sprites)
+                    Generic(pos, asset_dict['land'][data],
+                            [self.all_sprites, self.collision_sprites])
                 if layer_name == 'water':
                     if data == 'top':
                         # create animated sprite
@@ -44,7 +46,7 @@ class Level:
                     # PLAYER
 
                     # player object
-                    case 0: self.player = Player(pos, self.all_sprites)
+                    case 0: self.player = Player(pos, self.all_sprites, self.collision_sprites)
 
                     # COINS
 
@@ -65,18 +67,28 @@ class Level:
                     # tooth
                     case 8: Tooth(asset_dict['tooth'], pos, [self.all_sprites, self.damage_sprites])
                     # shell pointing left
-                    case 9: Shell('left', asset_dict['shell'], pos, self.all_sprites)
+                    case 9: Shell('left', asset_dict['shell'], pos,
+                                  [self.all_sprites, self.collision_sprites])
                     # shell pointing right
-                    case 10: Shell('right', asset_dict['shell'], pos, self.all_sprites)
+                    case 10: Shell('right', asset_dict['shell'], pos,
+                                   [self.all_sprites, self.collision_sprites])
 
                     # PALMS
 
                     # palms foreground
-                    case 11: Animated(asset_dict['palms']['small_fg'], pos, self.all_sprites)
-                    case 12: Animated(asset_dict['palms']['large_fg'], pos, self.all_sprites)
-                    case 13: Animated(asset_dict['palms']['left_fg'], pos, self.all_sprites)
-                    case 14: Animated(asset_dict['palms']['right_fg'], pos, self.all_sprites)
-                    # palms background
+                    case 11:
+                        Animated(asset_dict['palms']['small_fg'], pos, self.all_sprites)
+                        Block(pos, (80, 50), self.collision_sprites)
+                    case 12:
+                        Animated(asset_dict['palms']['large_fg'], pos, self.all_sprites)
+                        Block(pos, (80, 50), self.collision_sprites)
+                    case 13:
+                        Animated(asset_dict['palms']['left_fg'], pos, self.all_sprites)
+                        Block(pos, (80, 50), self.collision_sprites)
+                    case 14:
+                        Animated(asset_dict['palms']['right_fg'], pos, self.all_sprites)
+                        Block(pos + vector(50, 0), (80, 50), self.collision_sprites)
+                    # palms background - no collision
                     case 15: Animated(asset_dict['palms']['small_bg'], pos, self.all_sprites)
                     case 16: Animated(asset_dict['palms']['large_bg'], pos, self.all_sprites)
                     case 17: Animated(asset_dict['palms']['left_bg'], pos, self.all_sprites)
@@ -107,10 +119,10 @@ class Level:
     def run(self, dt):
         # update part
         self.event_loop()
-        # fill the level background red
-        self.display_surface.fill(SKY_COLOR)
+        self.all_sprites.update(dt)
         self.get_coins()
 
         # drawing part
-        self.all_sprites.update(dt)
+        self.display_surface.fill(SKY_COLOR)
         self.all_sprites.draw(self.display_surface)
+        pygame.draw.rect(self.display_surface, 'yellow', self.player.hitbox)
