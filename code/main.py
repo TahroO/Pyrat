@@ -32,10 +32,19 @@ class Main:
         cursor = pygame.cursors.Cursor((0, 0), surface)
         pygame.mouse.set_cursor(cursor)
 
-    # import the land terrain tiles
+    # import the terrain tiles used for level creation
     def imports(self):
+        # TERRAIN
         self.land_tiles = import_folder_dict('../graphics/terrain/land')
-        print(self.land_tiles)
+        # import a water tile
+        self.water_bottom = load('../graphics/terrain/water/water_bottom.png').convert_alpha()
+        self.water_top_animation = import_folder('../graphics/terrain/water/animation')
+
+        # COINS
+        self.gold = import_folder('../graphics/items/gold')
+        self.silver = import_folder('../graphics/items/silver')
+        self.diamond= import_folder('../graphics/items/diamond')
+        self.particle = import_folder('../graphics/items/particle')
 
     # switch editor on and off helper method
     def toggle(self):
@@ -51,7 +60,15 @@ class Main:
             # create a new level everytime a switch happens
             # to not load every graphic on its on pass in a dictionary
             self.level = Level(grid, self.switch, {
-                'land': self.land_tiles
+                'land': self.land_tiles,
+                # water bottom
+                'water bottom': self.water_bottom,
+                'water top': self.water_top_animation,
+                # coins - types
+                'gold': self.gold,
+                'silver': self.silver,
+                'diamond': self.diamond,
+                'particle': self.particle,
             })
 
     def run(self):

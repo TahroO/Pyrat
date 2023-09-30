@@ -199,7 +199,7 @@ class Editor:
 
         # create an empty grid (actual data structure needed for the level)
         # all different layers which are used inside the level
-        # ORDER IS IMPORTANT!
+        # ORDER IS IMPORTANT! -> key == coordinates , value == tile String
         layers = {
             'water': {},
             'bg palms': {},
