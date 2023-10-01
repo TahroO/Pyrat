@@ -70,9 +70,10 @@ class Level:
                     # spikes
                     case 7:
                         Spikes(asset_dict['spikes'], pos, [self.all_sprites, self.damage_sprites])
-                    # tooth
+                    # tooth - needs to know collision items but is not in that group
                     case 8:
-                        Tooth(asset_dict['tooth'], pos, [self.all_sprites, self.damage_sprites])
+                        Tooth(asset_dict['tooth'], pos, [self.all_sprites, self.damage_sprites],
+                              self.collision_sprites)
                     # shell pointing left
                     case 9:
                         Shell(

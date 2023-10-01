@@ -4,12 +4,13 @@ from pygame.math import Vector2 as vector
 
 from settings import *
 from timer import Timer
+from random import choice
 
 
 # parameter = inheritance
 # acts as a super class for all sprite objects
 class Generic(pygame.sprite.Sprite):
-    def __init__(self, pos, surf, group, z = LEVEL_LAYERS['main']):
+    def __init__(self, pos, surf, group, z=LEVEL_LAYERS['main']):
         # call super constructor for super class
         super().__init__(group)
         # show sprite image depending on type
@@ -31,7 +32,7 @@ class Block(Generic):
 # ANIMATIONS
 # represents animated objects -> water - subclass of Generic
 class Animated(Generic):
-    def __init__(self, assets, pos, group, z = LEVEL_LAYERS['main']):
+    def __init__(self, assets, pos, group, z=LEVEL_LAYERS['main']):
         # create a list of surfaces
         self.animation_frames = assets
         # used to pick 1 surf from assets list
@@ -83,7 +84,8 @@ class Spikes(Generic):
 
 
 class Tooth(Generic):
-    def __init__(self, assets, pos, group):
+    def __init__(self, assets, pos, group, collision_sprites):
+        # general setup
         self.animation_frames = assets
         self.frame_index = 0
         self.orientation = 'right'
@@ -91,6 +93,71 @@ class Tooth(Generic):
         super().__init__(pos, surf, group)
         # relocate sprite to set it in correct place in cell (without gap)
         self.rect.bottom = self.rect.top + TILE_SIZE
+
+        # movement
+        # choice randomize starting left or right side direction
+        self.direction = vector(choice((1, -1)), 0)
+        # make sure orientation matches direction upon spawn
+        self.orientation = 'left' if self.direction.x < 0 else 'right'
+        self.pos = vector(self.rect.topleft)
+        self.speed = 120
+        self.collision_sprites = collision_sprites
+
+        # destroy tooth at start when not on floor using collection comparison
+        # check if any point collides below the player - object - if not list is empty
+        if not [sprite for sprite in collision_sprites
+                if sprite.rect.collidepoint(self.rect.midbottom + vector(0, 10))]:
+            self.kill()
+
+    def animate(self, dt):
+        current_animation = self.animation_frames[f'run_{self.orientation}']
+        self.frame_index += ANIMATION_SPEED * dt
+        self.frame_index = 0 if self.frame_index >= len(current_animation) else self.frame_index
+        self.image = current_animation[int(self.frame_index)]
+
+    def move(self, dt):
+        # create indicator blocks to change direction when collision happens or no more ground is left
+        # check ground right
+        right_gap = self.rect.bottomright + vector(1, 1)
+        # check collision right
+        right_block = self.rect.midright + vector(1, 0)
+        # check ground left
+        left_gap = self.rect.bottomleft + vector(-1, 1)
+        # check collision left
+        left_block = self.rect.midleft + vector(-1, 0)
+
+        # moving right
+        if self.direction.x > 0:
+            # check for collisions
+            # floor collision
+            floor_sprites = [sprite for sprite in self.collision_sprites
+                             if sprite.rect.collidepoint(right_gap)]
+            # wall collision
+            wall_sprites = [sprite for sprite in self.collision_sprites
+                            if sprite.rect.collidepoint(right_block)]
+            # a collision happened or no floor - change direction
+            if wall_sprites or not floor_sprites:
+                self.direction.x *= -1
+                self.orientation = 'left'
+        # moving left
+        if self.direction.x < 0:
+            # floor collision
+            floor_sprites = [sprite for sprite in self.collision_sprites
+                             if sprite.rect.collidepoint(left_gap)]
+            # wall collision
+            wall_sprites = [sprite for sprite in self.collision_sprites
+                            if sprite.rect.collidepoint(left_block)]
+            # a collision happened or no floor - change direction
+            if wall_sprites or not floor_sprites:
+                self.direction.x *= -1
+                self.orientation = 'right'
+
+        self.pos.x += self.direction.x * self.speed * dt
+        self.rect.x = round(self.pos.x)
+
+    def update(self, dt):
+        self.animate(dt)
+        self.move(dt)
 
 
 class Shell(Generic):
@@ -146,7 +213,7 @@ class Shell(Generic):
         else:
             self.status = 'idle'
 
-    def update(self,dt):
+    def update(self, dt):
         self.get_status()
         self.animate(dt)
         self.attack_cooldown.update()

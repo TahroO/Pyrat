@@ -64,7 +64,6 @@ class Main:
         # PLAYER
         self.player_graphics = {folder: import_folder(f'../graphics/player/{folder}')
                                 for folder in list(walk('../graphics/player/'))[0][1]}
-        print(self.player_graphics)
     # switch editor on and off helper method
     def toggle(self):
         self.editor_active = not self.editor_active
