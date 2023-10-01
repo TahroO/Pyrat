@@ -60,7 +60,7 @@ class Main:
         # import only shell left and flip entire sprite when shell right is used
         self.shell = {folder: import_folder(f'../graphics/enemies/shell_left/{folder}')
                       for folder in list(walk('../graphics/enemies/shell_left'))[0][1]}
-
+        self.pearl = load('../graphics/enemies/pearl/pearl.png').convert_alpha()
         # PLAYER
         self.player_graphics = {folder: import_folder(f'../graphics/player/{folder}')
                                 for folder in list(walk('../graphics/player/'))[0][1]}
@@ -91,11 +91,12 @@ class Main:
                 'particle': self.particle,
                 # palms
                 'palms': self.palms,
-                # enemies
+                # enemies & player
                 'spikes': self.spike,
                 'tooth': self.tooth,
                 'shell': self.shell,
                 'player': self.player_graphics,
+                'pearl': self.pearl,
             })
 
     def run(self):

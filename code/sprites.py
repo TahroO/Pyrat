@@ -3,6 +3,7 @@ import pygame
 from pygame.math import Vector2 as vector
 
 from settings import *
+from timer import Timer
 
 
 # parameter = inheritance
@@ -93,7 +94,7 @@ class Tooth(Generic):
 
 
 class Shell(Generic):
-    def __init__(self, orientation, assets, pos, group):
+    def __init__(self, orientation, assets, pos, group, pearl_surf, damage_sprites):
         self.orientation = orientation
         # to use both directions of shell use assets.copy
         # otherwise shell will point in the same direction as last one
@@ -109,6 +110,70 @@ class Shell(Generic):
         super().__init__(pos, self.animation_frames[self.status][self.frame_index], group)
         # relocate sprite to set it in correct place in cell (without gap)
         self.rect.bottom = self.rect.top + TILE_SIZE
+
+        # pearl
+        self.pearl_surf = pearl_surf
+        self.has_shot = False
+        self.attack_cooldown = Timer(2000)
+        self.damage_sprites = damage_sprites
+
+    def animate(self, dt):
+        current_animation = self.animation_frames[self.status]
+        self.frame_index += ANIMATION_SPEED * dt
+        if self.frame_index >= len(current_animation):
+            self.frame_index = 0
+            if self.has_shot:
+                self.attack_cooldown.activate()
+                self.has_shot = False
+        self.image = current_animation[int(self.frame_index)]
+        # check if 3rd frame of animation (shoot frame)
+        if int(self.frame_index) == 2 and self.status == 'attack' and not self.has_shot:
+            # goes left (x-axis) when orientation is left
+            pearl_direction = vector(-1, 0) if self.orientation == 'left' else vector(1, 0)
+            # create a pearl that needs an offset to not "rolL" on floor
+            offset = (pearl_direction * 50) + vector(0, -10) if self.orientation == 'left' \
+                else (pearl_direction * 20 + vector(0, -10))
+            Pearl((self.rect.center + offset), pearl_direction, self.pearl_surf,
+                  [self.groups()[0], self.damage_sprites])
+            self.has_shot = True
+
+    def get_status(self):
+        # if player is close enough
+        # get player position and distance to shell position
+        if (vector(self.player.rect.center).distance_to(vector(self.rect.center)) < 500
+                and not self.attack_cooldown.active):
+            self.status = 'attack'
+        else:
+            self.status = 'idle'
+
+    def update(self,dt):
+        self.get_status()
+        self.animate(dt)
+        self.attack_cooldown.update()
+
+
+# represents the pearl which is shot by shells
+class Pearl(Generic):
+    def __init__(self, pos, direction, surf, group):
+        super().__init__(pos, surf, group)
+
+        # movement
+        self.pos = vector(self.rect.topleft)
+        self.direction = direction
+        self.speed = 150
+
+        # self destruct
+        self.timer = Timer(6000)
+        self.timer.activate()
+
+    def update(self, dt):
+        # movement
+        self.pos.x += self.direction.x * self.speed * dt
+        self.rect.x = round(self.pos.x)
+        # timer
+        self.timer.update()
+        if not self.timer.active:
+            self.kill()
 
 
 # represents the player object - subclass of Generic
