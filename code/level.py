@@ -46,7 +46,7 @@ class Level:
                     # PLAYER
 
                     # player object
-                    case 0: self.player = Player(pos, self.all_sprites, self.collision_sprites)
+                    case 0: self.player = Player(pos, asset_dict['player'], self.all_sprites, self.collision_sprites)
 
                     # COINS
 
@@ -75,19 +75,19 @@ class Level:
 
                     # PALMS
 
-                    # palms foreground
+                    # palms foreground -> block size attribute for movement
                     case 11:
                         Animated(asset_dict['palms']['small_fg'], pos, self.all_sprites)
-                        Block(pos, (80, 50), self.collision_sprites)
+                        Block(pos, (80, 10), self.collision_sprites)
                     case 12:
                         Animated(asset_dict['palms']['large_fg'], pos, self.all_sprites)
-                        Block(pos, (80, 50), self.collision_sprites)
+                        Block(pos, (80, 10), self.collision_sprites)
                     case 13:
                         Animated(asset_dict['palms']['left_fg'], pos, self.all_sprites)
-                        Block(pos, (80, 50), self.collision_sprites)
+                        Block(pos, (80, 10), self.collision_sprites)
                     case 14:
                         Animated(asset_dict['palms']['right_fg'], pos, self.all_sprites)
-                        Block(pos + vector(50, 0), (80, 50), self.collision_sprites)
+                        Block(pos + vector(50, 0), (80, 10), self.collision_sprites)
                     # palms background - no collision
                     case 15: Animated(asset_dict['palms']['small_bg'], pos, self.all_sprites)
                     case 16: Animated(asset_dict['palms']['large_bg'], pos, self.all_sprites)
@@ -125,4 +125,3 @@ class Level:
         # drawing part
         self.display_surface.fill(SKY_COLOR)
         self.all_sprites.draw(self.display_surface)
-        pygame.draw.rect(self.display_surface, 'yellow', self.player.hitbox)

@@ -51,7 +51,7 @@ class Particle(Animated):
     def __init__(self, assets, pos, group):
         super().__init__(assets, pos, group)
         # align particle and coin pos to center
-        self.rect = self.image.get_rect(center = pos)
+        self.rect = self.image.get_rect(center=pos)
 
     # overwrite animate method for this object due to particle should be animated only once
     def animate(self, dt):
@@ -69,7 +69,7 @@ class Coin(Animated):
     def __init__(self, coin_type, assets, pos, group):
         super().__init__(assets, pos, group)
         # center all images inside the cells
-        self.rect = self.image.get_rect(center = pos)
+        self.rect = self.image.get_rect(center=pos)
         self.coin_type = coin_type
 
 
@@ -111,9 +111,16 @@ class Shell(Generic):
 
 # represents the player object - subclass of Generic
 class Player(Generic):
-    def __init__(self, pos, group, collision_sprites):
-        super().__init__(pos, pygame.Surface((80, 64)), group)
-        self.image.fill('red')
+    def __init__(self, pos, assets, group, collision_sprites):
+        # animation - logic
+        self.animation_frames = assets
+        self.frame_index = 0
+        self.status = 'idle'
+        self.orientation = 'right'
+        # gets the actual surface for key / value pairs using string concatenation to get a list
+        surf = self.animation_frames[f'{self.status}_{self.orientation}'][self.frame_index]
+
+        super().__init__(pos, surf, group)
 
         # store movement of the player
         # store the direction from the player as a vector
@@ -131,6 +138,7 @@ class Player(Generic):
         self.collision_sprites = collision_sprites
         # player hit box
         self.hitbox = self.rect.inflate(-50, 0)
+
     # check player related input
     def input(self):
         # get all pressed keys
@@ -138,9 +146,13 @@ class Player(Generic):
         if keys[pygame.K_RIGHT]:
             # right was pressed move on x-axis
             self.direction.x = 1
+            # set orientation for animation
+            self.orientation = 'right'
         elif keys[pygame.K_LEFT]:
             # left was pressed move on x-axis
             self.direction.x = -1
+            # set orientation for animation
+            self.orientation = 'left'
         else:
             # no direction key was pressed do not move either
             self.direction.x = 0
@@ -150,6 +162,32 @@ class Player(Generic):
         if keys[pygame.K_SPACE] and self.on_floor:
             # move player up in y direction
             self.direction.y = -2
+
+    # method to determine the actual movement status for player to pick correct animation
+    def get_status(self):
+        # jumping
+        if self.direction.y < 0:
+            self.status = 'jump'
+        # falling
+        # due to collision check every frame player always moves down a bit and gets reset on surface afterward
+        # y has to be > 1 because of this fact or player is in constantly falling animation
+        elif self.direction.y > 1:
+            self.status = 'fall'
+        else:
+            # moving
+            if self.direction.x != 0:
+                self.status = 'run'
+            # standing still
+            else:
+                self.status = 'idle'
+
+    def animate(self, dt):
+        # list of frames like in __init__ method to get correct sprite
+        current_animation = self.animation_frames[f'{self.status}_{self.orientation}']
+        # increase index for using different tiles in animation
+        self.frame_index += ANIMATION_SPEED * dt
+        self.frame_index = 0 if self.frame_index >= len(current_animation) else self.frame_index
+        self.image = current_animation[int(self.frame_index)]
 
     def move(self, dt):
         # horizontal movement
@@ -175,6 +213,7 @@ class Player(Generic):
         floor_rect = pygame.Rect(self.hitbox.bottomleft, (self.hitbox.width, 2))
         floor_sprites = [sprite for sprite in self.collision_sprites if sprite.rect.colliderect(floor_rect)]
         self.on_floor = True if floor_sprites else False
+
     # collision
     def collision(self, direction):
         # check all possible sprites to collide with
@@ -202,9 +241,14 @@ class Player(Generic):
                     self.rect.centery, self.pos.y = self.hitbox.centery, self.hitbox.centery
                     # player collided with something on the ground reset gravity (fall - speed)
                     self.direction.y = 0
+
     # translate movement into updates for screen
     def update(self, dt):
         self.input()
         self.apply_gravity(dt)
         self.move(dt)
         self.check_on_floor()
+
+        # check after movement and gravity important!
+        self.get_status()
+        self.animate(dt)

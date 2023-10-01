@@ -61,6 +61,10 @@ class Main:
         self.shell = {folder: import_folder(f'../graphics/enemies/shell_left/{folder}')
                       for folder in list(walk('../graphics/enemies/shell_left'))[0][1]}
 
+        # PLAYER
+        self.player_graphics = {folder: import_folder(f'../graphics/player/{folder}')
+                                for folder in list(walk('../graphics/player/'))[0][1]}
+        print(self.player_graphics)
     # switch editor on and off helper method
     def toggle(self):
         self.editor_active = not self.editor_active
@@ -91,6 +95,7 @@ class Main:
                 'spikes': self.spike,
                 'tooth': self.tooth,
                 'shell': self.shell,
+                'player': self.player_graphics,
             })
 
     def run(self):
