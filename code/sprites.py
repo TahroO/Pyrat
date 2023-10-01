@@ -8,12 +8,14 @@ from settings import *
 # parameter = inheritance
 # acts as a super class for all sprite objects
 class Generic(pygame.sprite.Sprite):
-    def __init__(self, pos, surf, group):
+    def __init__(self, pos, surf, group, z = LEVEL_LAYERS['main']):
         # call super constructor for super class
         super().__init__(group)
         # show sprite image depending on type
         self.image = surf
         self.rect = self.image.get_rect(topleft=pos)
+        # make sure player is always in foreground
+        self.z = z
 
 
 # Class defining custom collisions
@@ -28,12 +30,12 @@ class Block(Generic):
 # ANIMATIONS
 # represents animated objects -> water - subclass of Generic
 class Animated(Generic):
-    def __init__(self, assets, pos, group):
+    def __init__(self, assets, pos, group, z = LEVEL_LAYERS['main']):
         # create a list of surfaces
         self.animation_frames = assets
         # used to pick 1 surf from assets list
         self.frame_index = 0
-        super().__init__(pos, self.animation_frames[self.frame_index], group)
+        super().__init__(pos, self.animation_frames[self.frame_index], group, z)
 
     # animate tiles
     def animate(self, dt):
