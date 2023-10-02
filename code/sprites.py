@@ -4,7 +4,7 @@ from pygame.math import Vector2 as vector
 
 from settings import *
 from timer import Timer
-from random import choice
+from random import choice, randint
 
 
 # parameter = inheritance
@@ -27,6 +27,27 @@ class Block(Generic):
         # placeholder surface with a given size
         surf = pygame.Surface(size)
         super().__init__(pos, surf, group)
+
+
+# Clouds
+class Cloud(Generic):
+    def __init__(self, pos, surf, group, left_limit):
+        super().__init__(pos, surf, group, LEVEL_LAYERS['clouds'])
+        # kill clouds when outside level
+        self.left_limit = left_limit
+
+        # movement
+        self.pos = vector(self.rect.topleft)
+        # different movement speed
+        self.speed = randint(20, 30)
+
+    def update(self, dt):
+        # clouds always move to the left
+        self.pos.x -= self.speed * dt
+        self.rect.x = round(self.pos.x)
+        # destroy cloud outside level limits
+        if self.rect.x <= self.left_limit:
+            self.kill()
 
 
 # ANIMATIONS

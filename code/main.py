@@ -64,6 +64,9 @@ class Main:
         # PLAYER
         self.player_graphics = {folder: import_folder(f'../graphics/player/{folder}')
                                 for folder in list(walk('../graphics/player/'))[0][1]}
+        # CLOUD
+        self.clouds = import_folder('../graphics/clouds/')
+
     # switch editor on and off helper method
     def toggle(self):
         self.editor_active = not self.editor_active
@@ -96,6 +99,7 @@ class Main:
                 'shell': self.shell,
                 'player': self.player_graphics,
                 'pearl': self.pearl,
+                'clouds': self.clouds
             })
 
     def run(self):

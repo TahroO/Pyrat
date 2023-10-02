@@ -5,7 +5,7 @@ from settings import *
 from support import *
 
 from sprites import *
-
+from random import choice, randint
 
 class Level:
     # constructor
@@ -23,8 +23,25 @@ class Level:
         # when level is created
         self.build_level(grid, asset_dict)
 
-        # additional stuff - support variables
+        # level limits - dimensions
+        self.level_limits = {
+            # end of level with offset - player never sees a cloud disappear
+            'left': -WINDOW_WIDTH,
+            # rightmost terrain tile + 500
+            # create a sorted list of all terrain tiles by horizontal position -> last one -> x value
+            # gets the right most item + offset to be safe
+            'right':  sorted(list(grid['terrain'].keys()), key=lambda pos: pos[0])[-1][0] + 500
+        }
+
+        # ADDITIONAL stuff - support variables
         self.particle_surfs = asset_dict['particle']
+        # store cloud surface
+        self.cloud_surfs = asset_dict['clouds']
+        # create a new type of event
+        self.cloud_timer = pygame.USEREVENT + 2
+        # create a cloud every 2 seconds
+        pygame.time.set_timer(self.cloud_timer, 2000)
+        self.startup_clouds()
 
     # build the level - loading layers and graphics
     def build_level(self, grid, asset_dict):
@@ -148,7 +165,6 @@ class Level:
         if collision_sprites:
             self.player.damage()
 
-
     # loop for actualisation inside the level
     def event_loop(self):
         for event in pygame.event.get():
@@ -159,6 +175,33 @@ class Level:
                 # if escape was pressed inside the level -> switch to editor mode calling transition
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 self.switch()
+
+            # cloud creation
+            if event.type == self.cloud_timer:
+                # pick random surface from clouds
+                surf = choice(self.cloud_surfs)
+                # scale clouds randomly
+                surf = pygame.transform.scale2x(surf) if randint(0, 5) > 3 else surf
+                x = self.level_limits['right'] + randint(100, 300)
+                # create cloud on top of horizon by default
+                # as these are behind the horizon an offset is needed
+                y = self.horizon_y - randint(-50, 600)
+                # create cloud object
+                Cloud((x, y), surf, self.all_sprites, self.level_limits['left'])
+
+    # cloud creation
+    def startup_clouds(self):
+        for i in range(40):
+            # pick random surface from clouds
+            surf = choice(self.cloud_surfs)
+            # scale clouds randomly
+            surf = pygame.transform.scale2x(surf) if randint(0, 5) > 3 else surf
+            x = randint(self.level_limits['left'], self.level_limits['right'])
+            # create cloud on top of horizon by default
+            # as these are behind the horizon an offset is needed
+            y = self.horizon_y - randint(-50, 600)
+            # create cloud object
+            Cloud((x, y), surf, self.all_sprites, self.level_limits['left'])
 
     def run(self, dt):
         # update part
@@ -188,6 +231,8 @@ class CameraGroup(pygame.sprite.Group):
         # position - offset -> scaling with the player
         horizon_pos = self.horizon_y - self.offset.y
 
+        # check if horizon is somewhere below window height
+        # normal level
         if horizon_pos < WINDOW_HEIGHT:
             sea_rect = pygame.Rect(0, horizon_pos, WINDOW_WIDTH, WINDOW_HEIGHT - horizon_pos)
             pygame.draw.rect(self.display_surface, SEA_COLOR, sea_rect)
@@ -201,15 +246,34 @@ class CameraGroup(pygame.sprite.Group):
             pygame.draw.rect(self.display_surface, HORIZON_TOP_COLOR, horizon_rect2)
             pygame.draw.rect(self.display_surface, HORIZON_TOP_COLOR, horizon_rect3)
 
+            pygame.draw.line(self.display_surface, HORIZON_COLOR,
+                             (0, horizon_pos), (WINDOW_WIDTH, horizon_pos),
+                             3)
+
+        # check if horizon is somewhere over window height
+        # underwater level
+        if horizon_pos < 0:
+            self.display_surface.fill(SEA_COLOR)
+
     def custom_draw(self, player):
         # relative to player offset positioning - "camera" follows player movement
         self.offset.x = player.rect.centerx - WINDOW_WIDTH / 2
         self.offset.y = player.rect.centery - WINDOW_HEIGHT / 2
 
+        # draw clouds in background of horizon first
+        for sprite in self:
+            if sprite.z == LEVEL_LAYERS['clouds']:
+                offset_rect = sprite.rect.copy()
+                offset_rect.center -= self.offset
+                self.display_surface.blit(sprite.image, offset_rect)
+
+        # draw horizon second
         self.draw_horizon()
+
+        # draw all other elements that are not clouds
         for sprite in self:
             for layer in LEVEL_LAYERS.values():
-                if sprite.z == layer:
+                if sprite.z == layer and sprite.z != LEVEL_LAYERS['clouds']:
                     # create a copy of the object rect to use it for offset
                     offset_rect = sprite.rect.copy()
                     # use for offset
