@@ -81,6 +81,8 @@ class Coin(Animated):
 class Spikes(Generic):
     def __init__(self, surf, pos, group):
         super().__init__(pos, surf, group)
+        # create a mask for proper collision
+        self.mask = pygame.mask.from_surface(self.image)
 
 
 class Tooth(Generic):
@@ -93,6 +95,8 @@ class Tooth(Generic):
         super().__init__(pos, surf, group)
         # relocate sprite to set it in correct place in cell (without gap)
         self.rect.bottom = self.rect.top + TILE_SIZE
+        # create a mask for proper collision
+        self.mask = pygame.mask.from_surface(self.image)
 
         # movement
         # choice randomize starting left or right side direction
@@ -114,6 +118,8 @@ class Tooth(Generic):
         self.frame_index += ANIMATION_SPEED * dt
         self.frame_index = 0 if self.frame_index >= len(current_animation) else self.frame_index
         self.image = current_animation[int(self.frame_index)]
+        # as the image changes when animation occurs a new mask is needed every time
+        self.mask = pygame.mask.from_surface(self.image)
 
     def move(self, dt):
         # create indicator blocks to change direction when collision happens or no more ground is left
@@ -223,6 +229,8 @@ class Shell(Generic):
 class Pearl(Generic):
     def __init__(self, pos, direction, surf, group):
         super().__init__(pos, surf, group)
+        # create a mask for proper collision
+        self.mask = pygame.mask.from_surface(self.image)
 
         # movement
         self.pos = vector(self.rect.topleft)
@@ -255,6 +263,8 @@ class Player(Generic):
         surf = self.animation_frames[f'{self.status}_{self.orientation}'][self.frame_index]
 
         super().__init__(pos, surf, group)
+        # create a mask for proper collision
+        self.mask = pygame.mask.from_surface(self.image)
 
         # store movement of the player
         # store the direction from the player as a vector
@@ -272,6 +282,9 @@ class Player(Generic):
         self.collision_sprites = collision_sprites
         # player hit box
         self.hitbox = self.rect.inflate(-50, 0)
+
+        # timer make sure damage occurrence is limited
+        self.invul_timer = Timer(200)
 
     # check player related input
     def input(self):
@@ -296,6 +309,19 @@ class Player(Generic):
         if keys[pygame.K_SPACE] and self.on_floor:
             # move player up in y direction
             self.direction.y = -2
+
+    # damage method if a damage-collision with the player occurred
+    def damage(self):
+        # player was hit ->
+        # implement HP LOGIC here
+        # check if invulnerable timer is not active
+        if not self.invul_timer.active:
+            # start invulnerable timer to limit damage
+            self.invul_timer.activate()
+            # make player jump on hit -> optical damage indicator
+            self.direction.y -= 1.5
+            # implement HP logic here
+            print('ouch')
 
     # method to determine the actual movement status for player to pick correct animation
     def get_status(self):
@@ -322,6 +348,17 @@ class Player(Generic):
         self.frame_index += ANIMATION_SPEED * dt
         self.frame_index = 0 if self.frame_index >= len(current_animation) else self.frame_index
         self.image = current_animation[int(self.frame_index)]
+        # every animation image changes, a new mask is needed for that
+        self.mask = pygame.mask.from_surface(self.image)
+
+        # player was damaged -> make it visible by flashing in a color
+        if self.invul_timer.active:
+            # transform mask to a new surface
+            surf = self.mask.to_surface()
+            # get rid of black inside the surface
+            surf.set_colorkey('black')
+            # use this mask as new image
+            self.image = surf
 
     def move(self, dt):
         # horizontal movement
@@ -382,6 +419,7 @@ class Player(Generic):
         self.apply_gravity(dt)
         self.move(dt)
         self.check_on_floor()
+        self.invul_timer.update()
 
         # check after movement and gravity important!
         self.get_status()
