@@ -50,6 +50,13 @@ class Level:
                     case 0:
                         self.player = Player(pos, asset_dict['player'], self.all_sprites, self.collision_sprites)
 
+                    # SKY
+
+                    # horizon position
+                    case 1:
+                        self.horizon_y = pos[1]
+                        self.all_sprites.horizon_y = pos[1]
+
                     # COINS
 
                     # gold
@@ -176,11 +183,30 @@ class CameraGroup(pygame.sprite.Group):
         # vector influence the offset of all drawn objects (should be relative to player)
         self.offset = vector()
 
+    # draw the horizon / sky
+    def draw_horizon(self):
+        # position - offset -> scaling with the player
+        horizon_pos = self.horizon_y - self.offset.y
+
+        if horizon_pos < WINDOW_HEIGHT:
+            sea_rect = pygame.Rect(0, horizon_pos, WINDOW_WIDTH, WINDOW_HEIGHT - horizon_pos)
+            pygame.draw.rect(self.display_surface, SEA_COLOR, sea_rect)
+            # horizon line
+            # 3 extra rectangles
+            horizon_rect1 = pygame.Rect(0, horizon_pos - 10, WINDOW_WIDTH, 10)
+            horizon_rect2 = pygame.Rect(0, horizon_pos - 16, WINDOW_WIDTH, 4)
+            horizon_rect3 = pygame.Rect(0, horizon_pos - 20, WINDOW_WIDTH, 2)
+
+            pygame.draw.rect(self.display_surface, HORIZON_TOP_COLOR, horizon_rect1)
+            pygame.draw.rect(self.display_surface, HORIZON_TOP_COLOR, horizon_rect2)
+            pygame.draw.rect(self.display_surface, HORIZON_TOP_COLOR, horizon_rect3)
+
     def custom_draw(self, player):
         # relative to player offset positioning - "camera" follows player movement
         self.offset.x = player.rect.centerx - WINDOW_WIDTH / 2
         self.offset.y = player.rect.centery - WINDOW_HEIGHT / 2
 
+        self.draw_horizon()
         for sprite in self:
             for layer in LEVEL_LAYERS.values():
                 if sprite.z == layer:
