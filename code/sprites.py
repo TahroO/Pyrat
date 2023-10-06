@@ -67,6 +67,7 @@ class Animated(Generic):
         self.frame_index = 0 if self.frame_index >= len(self.animation_frames) else self.frame_index
         self.image = self.animation_frames[int(self.frame_index)]
 
+    # Update method
     def update(self, dt):
         self.animate(dt)
 
