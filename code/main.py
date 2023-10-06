@@ -91,7 +91,7 @@ class Main:
                 'silver': self.silver,
                 'diamond': self.diamond,
                 'particle': self.particle,
-                # palms
+                # palms and tree
                 'palms': self.palms,
                 # enemies & player
                 'spikes': self.spike,
